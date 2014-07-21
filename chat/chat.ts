@@ -217,8 +217,7 @@ module Chat {
                 } else {
                     OnConsoleText("Found no one to reply to.");
                 }
-
-
+                return true;
             break;
             case '/openui':
                 if (processed.args.length < 1) {

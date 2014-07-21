@@ -14,6 +14,7 @@ module Chat {
     var $chatInput: JQuery;
     var $chatText: JQuery;
     var hasScrolled = false;
+    var lastTellFrom: JID = null;
 
     function AppendChat(chatBody, iconClass) {
         // This appends the chat item and escapes it
@@ -37,12 +38,13 @@ module Chat {
     function SetTextEntryMode(mode) {
         $chatInput.attr('data-command-mode', mode.toString());
     }
-    function OnChatCommand(command: string, args: Array<string>) {
+    function OnChatCommand(command: string, to: string, body: string) {
         var msg;
         var msgClass = 'chatBody';
         switch (command) {
+            case "/r":
             case "/whisper":
-                msg = '[IM to] [' + args[0] + ']: ' + args[1];
+                msg = '[IM to] [' + to  + ']: ' + body;
                 msgClass = msgClass + ' imOutChat';                
                 break;
             default:
@@ -66,6 +68,7 @@ module Chat {
                 if (nick) displayName = nick;
                 msg = '[IM from] [' + displayName + ']: ' + body;
                 msgClass = msgClass + ' imChat';
+                lastTellFrom = jid;
             break;
             case XmppMessageType.GROUPCHAT:
                 jid = new JID(from);
@@ -181,6 +184,7 @@ module Chat {
                 }
                 to = processed.args[0] + '@' + cu.CHAT_SERVICE;
                 body = EverythingAfterArg(input, processed, 0);
+                cuAPI.JoinMUC(processed.args[0])
                 cu.SendChat(XmppMessageType.GROUPCHAT, to, body);
                 return true;
             case '/quit':
@@ -199,8 +203,22 @@ module Chat {
                 }
                 body = EverythingAfterArg(input, processed, 0);
                 cu.SendChat(XmppMessageType.CHAT, to, body);
-                OnChatCommand(processed.name, [processed.args[0], body]);
+                OnChatCommand(processed.name, processed.args[0], body);
                 return true;
+            case '/r':
+                if (processed.args.length < 1) {
+                    OnConsoleText("Usage: " + processed.name + " <message>");
+                    return false;
+                }
+                if (lastTellFrom) {
+                    body = processed.rest;
+                    cu.SendChat(XmppMessageType.CHAT, lastTellFrom.user+'@'+lastTellFrom.domain, body);
+                    OnChatCommand(processed.name, lastTellFrom.user, body);
+                } else {
+                    OnConsoleText("Found no one to reply to.");
+                }
+                return true;
+            break;
             case '/openui':
                 if (processed.args.length < 1) {
                     OnConsoleText("Usage: " + processed.name + " <name>\r\nHint: The addon name without '.ui' extension. e.g. /openui addon");
@@ -297,12 +315,14 @@ module Chat {
         cu.Listen('XmppAuthFailed', () => OnConsoleText('Login failed'));
 
         $chatInput.keydown(OnSubmitChat);
+
         $chatInput.focus(OnFocus);
         $chatInput.blur(OnBlur);
         if ($.cookie("myLoginToken")) {
             OnConsoleText("Reconnecting to chat!");
             Connect($.cookie("myLoginToken"));
         }
+
     });
 
     cu.OnServerConnected(() => {

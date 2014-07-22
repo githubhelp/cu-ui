@@ -133,7 +133,9 @@ module Chat {
         $chatInput.val(initText ? initText : '');
         SetTextEntryMode(cmdKind);
     }
-
+    function AppendConsoleText(output) {
+        OnConsoleText(output);
+    }
     function OnConsoleText(output) {
         var lines = output.split(/[\r\n]+/);
         var len = lines.length;
@@ -183,7 +185,7 @@ module Chat {
             case '/tell':
             case '/whisper':
                 if (processed.args.length < 2) {
-                    OnConsoleText("Usage: " + processed.name + " <to> <message>");
+                    AppendConsoleText("Usage: " + processed.name + " <to> <message>");
                     return false;
                 }
 
@@ -197,7 +199,7 @@ module Chat {
                 return true;
             case '/r':
                 if (processed.args.length < 1) {
-                    OnConsoleText("Usage: " + processed.name + " <message>");
+                    AppendConsoleText("Usage: " + processed.name + " <message>");
                     return false;
                 }
                 if (lastTellFrom) {
@@ -205,7 +207,7 @@ module Chat {
                     cu.SendChat(XmppMessageType.CHAT, lastTellFrom.user + '@' + lastTellFrom.domain, body);
                     OnChatCommand(processed.name, lastTellFrom.user, body);
                 } else {
-                    OnConsoleText("Found no one to reply to.");
+                    AppendConsoleText("Found no one to reply to.");
                 }
                 return true;
             case '/openui':
